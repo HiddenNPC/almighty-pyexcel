@@ -117,3 +117,26 @@ def demo_xlsxCreate():
     worksheet.insert_image('B5', 'logo.png')
 
     workbook.close()
+
+
+def generate_xlsx_from_mongo(overview_db, table_list):
+    import xlsxwriter
+    result = []
+    for table_name in table_list:
+        cur_doc = overview_db['all_table_header_info'].find_one({"table_name": table_name})
+        # Create an new Excel file and add a worksheet.
+        workbook = xlsxwriter.Workbook('./private/%s.xlsx' % table_name)
+        worksheet = workbook.add_worksheet()
+
+        # Add a bold format to use to highlight cells.
+        format_bold = workbook.add_format({'bold': True})
+
+        # Widen the first column to make the text clearer.
+        worksheet.set_column('A:GG', 20, format_bold)
+        if cur_doc == None or len(cur_doc) == 0:
+            return result
+        else:
+            result = cur_doc.get('table_header')
+            for i in result:
+                worksheet.write(0, result.index(i), i)
+            workbook.close()
