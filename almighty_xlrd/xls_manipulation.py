@@ -119,6 +119,25 @@ def demo_xlsxCreate():
     workbook.close()
 
 
+def clearStrCharset(string):
+    import re
+    result_str = ""
+    try:
+        if string is None:
+            result_str = ""
+            return result_str
+        elif not isinstance(string, basestring):
+            return string
+        else:
+            result_str = str(string)
+        result_str = re.sub(r'[^\x20-\x7e]', '', result_str)
+        result_str = result_str.replace("\r", '').replace("\n", '').strip()
+    except:
+        # print [string]
+        pass
+    return result_str
+
+
 def generate_xlsx_from_mongo(overview_db, table_list):
     import xlsxwriter
     result = []
@@ -140,3 +159,75 @@ def generate_xlsx_from_mongo(overview_db, table_list):
             for i in result:
                 worksheet.write(0, result.index(i), i)
             workbook.close()
+
+
+def generateExcel_from_mongo(header, content, sheetName, file):
+    import xlsxwriter
+    print "start to save %s" % sheetName
+    workbook = xlsxwriter.Workbook(file)
+    worksheet = workbook.add_worksheet(sheetName)
+    worksheet.set_column('A:GG', 20)
+    formatHeader = workbook.add_format()
+    formatYellow = workbook.add_format()
+    formatRed = workbook.add_format()
+    formatGreen = workbook.add_format()
+    formatRow = workbook.add_format()
+    formatYellow.set_bg_color("yellow")
+    formatRed.set_bg_color("red")
+    formatGreen.set_bg_color("green")
+    formatHeader.set_bold()
+    formatHeader.set_font_color('blue')
+    formatHeader.set_align("center")
+    formatHeader.set_align("vcenter")
+    formatRow.set_bg_color("#daeef3")
+
+    worksheet.write_row(0, 0, header, formatHeader)
+    worksheet.freeze_panes(1, 0)
+    cols = []
+    try:
+        for i in range(len(header)):
+            cols.append(len(header[i]))
+        for line in content:
+            for i, values in enumerate(line):
+                if values is not None:
+                    if len(str(values)) > cols[i]:
+                        cols[i] = len(str(values))
+
+        for i in range(len(header)):
+            if cols[i] > 80:
+                cols[i] = len(header[i]) + 10
+            worksheet.set_column(i, i, cols[i] + 1)
+    except:
+        # print "The column number is "
+        pass
+    # print content
+    # worksheet.write_url(0,2,"internal:'Sheet1'!A1")
+    hostname, number = "", 0
+    for row_index in range(len(content)):
+        if hostname != content[row_index][0]:
+            number += 1
+            hostname = content[row_index][0]
+        if number % 2 == 0:
+            worksheet.set_row(row_index + 1, None, formatRow)
+            # for col_index in range(len(content[row_index])):
+            #     worksheet.write(row_index+1,col_index,"",formatRow)
+
+    for row_index in range(len(content)):
+        for col_index in range(len(content[row_index])):
+            try:
+                content[row_index][col_index] = clearStrCharset(content[row_index][col_index])
+                if isinstance(content[row_index][col_index], tuple):
+                    if content[row_index][col_index][1] == "yellow":
+                        worksheet.write(row_index + 1, col_index, str(content[row_index][col_index][0]), formatYellow)
+                    elif content[row_index][col_index][1] == "red":
+                        worksheet.write(row_index + 1, col_index, str(content[row_index][col_index][0]), formatRed)
+                    elif content[row_index][col_index][1] == "green":
+                        worksheet.write(row_index + 1, col_index, str(content[row_index][col_index][0]), formatGreen)
+                else:
+                    worksheet.write(row_index + 1, col_index, str(content[row_index][col_index]))
+                    # worksheet.set_column(row_index+1,col_index,cols[row_index][col_index]+20)
+            except:
+                print "error", content[row_index], col_index
+                worksheet.write(row_index + 1, col_index, "")
+    print file
+    workbook.close()
